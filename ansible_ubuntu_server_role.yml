@@ -1,0 +1,144 @@
+---
+
+- hosts: ubuntu
+  become: yes
+
+  tasks:
+          - name: install nginx
+            apt:
+                    name: nginx
+                    state: latest
+
+          - name: install apache
+            apt:
+                    name: apache2
+                    state: latest
+
+          - name: install php(7.4)
+            apt:
+                    name: '{{ item }}'
+                    state: latest
+                    update_cache: yes
+            with_items:
+                    - php7.4
+                    - php7.4-fpm  
+
+          - name: get zabbix repository
+            get_url:
+                url: "https://repo.zabbix.com/zabbix/6.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_6.0-4+ubuntu20.04_all.deb"
+                dest: /home/ansible-admin/
+
+
+          - name: install zabbix repository
+            apt:
+                    deb: /home/ansible-admin/zabbix-release_6.0-4+ubuntu20.04_all.deb
+                    state: present
+
+
+          - name: install zabbix_agent
+            apt:
+                    name: '{{ item }}'
+                    update_cache: yes
+            with_items:
+                    - zabbix-agent
+
+
+          - name: install bind
+            apt:
+                    name: bind9
+                    state: latest
+
+          - name: copy filebeat deb package
+            copy:
+                    src: /home/ansible-admin/filebeat-7.17.8-amd64.deb
+                    dest: /tmp/filebeat-7.17.8-amd64_ansible_copy.deb
+
+          - name: install filebeat
+            apt:
+                    deb: /tmp/filebeat-7.17.8-amd64_ansible_copy.deb
+
+          - name: install postfix
+            apt:
+                    name: postfix
+                    state: latest
+
+          - name: set the mail domain name
+            copy:
+                    content: "84.201.159.181.nip.io"
+                    dest: /etc/mailname
+
+          - name: install dovecot
+            apt:
+                    name: '{{ item }}'
+                    state: latest
+                    update_cache: yes
+            with_items:
+                    - dovecot-core
+                    - dovecot-imapd
+                    - dovecot-pop3d
+                    - dovecot-lmtpd
+
+          - name: get roundcube
+            get_url:
+                url: "https://github.com/roundcube/roundcubemail/releases/download/1.4.6/roundcubemail-1.4.6-complete.tar.gz"
+                dest: /home/ansible-admin/
+
+          - name: install roundcube
+            unarchive:
+                    src: /home/ansible-admin/roundcubemail-1.4.6-complete.tar.gz
+                    dest: /var/www/html
+                    remote_src: yes
+                    extra_opts:
+                            - --transform
+                            - s/roundcubemail-1.4.6/roundcube/
+
+
+
+  handlers:
+  - name: zabbix_agent is enabled and running
+    systemd:
+     name: zabbix-agent.service
+     enabled: yes
+     state: started
+
+  - name: nginx is enabled and running
+    systemd:
+     name: nginx.service
+     enabled: yes
+     state: started
+
+  - name: apache is enabled and running
+    systemd:
+     name: apache2.service
+     enabled: yes
+     state: started
+
+  - name: php7.4fpm is enabled and running
+    systemd:
+     name: php7.4-fpm.service
+     enabled: yes
+     state: started
+
+  - name: bind is enabled and running
+    systemd:
+     name: bind9.service
+     enabled: yes
+     state: started
+
+  - name: filebeat is enabled and running
+    systemd:
+     name: filebeat.service
+     enabled: yes
+     state: started
+
+   - name: postfix is enabled and running
+    systemd:
+     name: postfix.service
+     enabled: yes
+     state: started
+
+    - name: dovecot is enabled and running
+    systemd:
+     name: dovecot.service
+     enabled: yes
+     state: started
